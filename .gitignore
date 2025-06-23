@@ -1,0 +1,12 @@
+# Node.js
+node_modules/
+.env
+npm-debug.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS system files
+.DS_Store

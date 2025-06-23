@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Adaptive Honeypot Site</title>
+</head>
+<body>
+  <h1>Welcome to Adaptive Honeypot Site</h1>
+
+  <!-- Normal user visible link -->
+  <a href="/normal-page">Normal Page</a>
+
+  <!-- 1. Hidden honeypot link (invisible) -->
+  <a href="/api/hidden?uid=xyz123" id="hidden-link" style="display:none;">Hidden Link</a>
+
+  <!-- 2. Decoy login form -->
+  <form id="decoy-form" action="/api/decoy-login" method="POST" autocomplete="off">
+    <input type="text" name="username" placeholder="Username" autocomplete="off" />
+    <input type="text" name="honeypot_field" id="honeypot-field" style="display:none;" autocomplete="off" />
+    <button type="submit">Login</button>
+  </form>
+
+  <!-- 3. Dynamic honeypot trap link -->
+  <a id="dynamic-honeypot-link" style="display:none;">Dynamic Trap</a>
+
+  <!-- 4. Another hidden link with randomized path -->
+  <a id="hidden-random-link" style="display:none;">Hidden Random Link</a>
+
+  <!-- 5. Fake API call button (hidden) -->
+  <button id="fake-api-call" style="display:none;">Fake API Call</button>
+
+  <!-- 6. Invisible trap input (not inside form) -->
+  <input type="text" id="invisible-trap-input" name="invisible_trap" style="display:none;" autocomplete="off" />
+
+  <!-- 7. Decoy logout form (invisible) -->
+  <form id="decoy-logout-form" action="/api/decoy-logout" method="POST" style="display:none;">
+    <input type="hidden" name="uniqueUserId" />
+  </form>
+
+  <!-- FingerprintJS v3 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+
+  <script>
+    function mockApiResponse(endpoint) {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({
+            status: 'success',
+            endpoint: endpoint,
+            timestamp: new Date().toISOString()
+          });
+        }, 300);
+      });
+    }
+
+    function initializeHoneypot(uniqueId) {
+      console.log('[Honeypot] Initializing with UID:', uniqueId);
+
+      const hiddenLink = document.getElementById('hidden-link');
+      if (hiddenLink) {
+        hiddenLink.href = `/api/hidden?uid=${uniqueId}`;
+        hiddenLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          mockApiResponse(this.href).then(response => {
+            console.log('[Honeypot] Hidden link clicked:', response);
+          });
+        });
+        console.log('[Honeypot] Hidden Link URL:', hiddenLink.href);
+      }
+
+      const trapLink = document.getElementById('dynamic-honeypot-link');
+      if (trapLink) {
+        const randomToken = Math.random().toString(36).substring(2, 10);
+        const dynamicPath = `/trap/${uniqueId}_${randomToken}`;
+        trapLink.href = dynamicPath;
+        trapLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          mockApiResponse(this.href).then(response => {
+            console.log('[Honeypot] Dynamic trap triggered:', response);
+          });
+        });
+        console.log('[Honeypot] Dynamic Trap URL:', dynamicPath);
+      }
+
+      const hiddenRandomLink = document.getElementById('hidden-random-link');
+      if (hiddenRandomLink) {
+        const randToken2 = Math.random().toString(36).substring(2, 12);
+        const mockPath = `/api/hidden-random?uid=${uniqueId}&token=${randToken2}`;
+        hiddenRandomLink.href = mockPath;
+        hiddenRandomLink.addEventListener('click', function (e) {
+          e.preventDefault();
+          mockApiResponse(mockPath).then(response => {
+            console.log('[Honeypot] Hidden random link interaction:', response);
+          });
+        });
+        console.log('[Honeypot] Hidden random link setup with token:', randToken2);
+      }
+
+      const fakeApiBtn = document.getElementById('fake-api-call');
+      if (fakeApiBtn) {
+        fakeApiBtn.addEventListener('click', () => {
+          const url = `/api/fake-endpoint?uid=${uniqueId}`;
+          mockApiResponse(url)
+            .then(response => {
+              console.log('[Honeypot] Fake API called:', response);
+            })
+            .catch(err => {
+              console.error('[Honeypot] Fake API call error:', err);
+            });
+        });
+        console.log('[Honeypot] Fake API call button setup');
+      }
+
+      const invisibleTrapInput = document.getElementById('invisible-trap-input');
+      if (invisibleTrapInput) {
+        invisibleTrapInput.addEventListener('change', function () {
+          console.log('[Honeypot] Invisible trap triggered! Value:', this.value);
+        });
+        console.log('[Honeypot] Invisible trap input ready');
+      }
+
+      const decoyLogoutForm = document.getElementById('decoy-logout-form');
+      if (decoyLogoutForm) {
+        const inputLogout = decoyLogoutForm.querySelector('input[name="uniqueUserId"]');
+        if (!inputLogout) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'uniqueUserId';
+          input.value = uniqueId;
+          decoyLogoutForm.appendChild(input);
+          console.log('[Honeypot] UID added to decoy logout form');
+        }
+      }
+    }
+
+    FingerprintJS.load().then(fp => {
+      fp.get().then(result => {
+        const uniqueId = result.visitorId;
+        localStorage.setItem('uniqueUserId', uniqueId);
+        initializeHoneypot(uniqueId);
+      });
+    }).catch(err => {
+      console.error('[Honeypot] FingerprintJS error:', err);
+      const fallbackId = 'hp_' + Math.random().toString(36).substring(2, 15);
+      initializeHoneypot(fallbackId);
+    });
+
+    // Manual test function
+    window.testHiddenRandomLink = function () {
+      const link = document.getElementById('hidden-random-link');
+      if (link) {
+        link.click();
+      } else {
+        console.error('hidden-random-link not found');
+      }
+    };
+  </script>
+</body>
+</html>
